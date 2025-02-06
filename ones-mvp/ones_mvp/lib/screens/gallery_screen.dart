@@ -6,46 +6,46 @@ import 'package:ones_mvp/theme/theme.dart';
 
 class GalleryScreen extends StatefulWidget {
   final String eventCode;
-  const GalleryScreen({super.key, required this.eventCode});
+  final String folderId;
+
+  const GalleryScreen({super.key, required this.eventCode, required this.folderId});
 
   @override
   _GalleryScreenState createState() => _GalleryScreenState();
 }
 
 class _GalleryScreenState extends State<GalleryScreen> {
-  List<File> localPhotos = [];
-  List<File> drivePhotos = [];
+  List<Map<String, Object>> allPhotos = [];
   Set<String> selectedPhotos = {};
+  Set<String> sharedPhotos = {}; // 🔹 Lista de fotos locales ya compartidas
+  bool isDownloadingDrivePhotos = false;
+  bool isUploadingPhotos = false;
 
   @override
   void initState() {
     super.initState();
-    _loadPhotos();
+    _loadLocalPhotos();
+    _loadMissingDrivePhotos();
   }
 
-  // 🔄 Cargar fotos locales y de Drive
-  Future<void> _loadPhotos() async {
-    await _loadLocalPhotos();
-    await _loadDrivePhotos();
-  }
-
-  // 📂 Cargar fotos locales
   Future<void> _loadLocalPhotos() async {
     try {
-      final String eventFolderPath = "/storage/emulated/0/Pictures/Ones/${widget.eventCode}";
+      final String eventFolderPath =
+          "/storage/emulated/0/Pictures/Ones/${widget.eventCode}";
       final Directory eventDirectory = Directory(eventFolderPath);
 
       if (eventDirectory.existsSync()) {
         List<FileSystemEntity> files = eventDirectory.listSync();
-        List<File> images = files
+        List<Map<String, Object>> images = files
             .whereType<File>()
-            .where((file) => file.path.endsWith('.jpg') || file.path.endsWith('.png'))
+            .where((file) =>
+                file.path.endsWith('.jpg') || file.path.endsWith('.png'))
+            .map((file) => {"file": file, "source": "Local"})
             .toList();
 
-        images.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
-
         setState(() {
-          localPhotos = images;
+          allPhotos = images;
+          _sortPhotos();
         });
 
         print("✅ Se encontraron ${images.length} fotos locales.");
@@ -57,23 +57,62 @@ class _GalleryScreenState extends State<GalleryScreen> {
     }
   }
 
-  // 🔄 Cargar fotos de Google Drive y guardarlas temporalmente
-  Future<void> _loadDrivePhotos() async {
+  Future<void> _loadMissingDrivePhotos() async {
     try {
-      GoogleDriveService driveService = GoogleDriveService();
-      List<File> driveImages = await driveService.fetchImagesFromDrive();
-
       setState(() {
-        drivePhotos = driveImages;
+        isDownloadingDrivePhotos = true;
       });
 
-      print("✅ ${driveImages.length} imágenes cargadas desde Drive.");
+      GoogleDriveService driveService = GoogleDriveService(widget.folderId);
+      List<String> drivePhotoNames = await driveService.fetchPhotoNamesFromDrive();
+      print("📂 Se encontraron ${drivePhotoNames.length} fotos en Drive.");
+
+      Set<String> localPhotoNames = allPhotos
+          .map((photo) => (photo["file"] as File).path.split('/').last)
+          .toSet();
+
+      // 🔹 Guardar las fotos locales que ya están en Drive
+      setState(() {
+        sharedPhotos = localPhotoNames.intersection(drivePhotoNames.toSet());
+      });
+
+      List<String> missingPhotos = drivePhotoNames
+          .where((name) => !localPhotoNames.contains(name))
+          .toList();
+      print("📥 ${missingPhotos.length} fotos faltan en local y se descargarán.");
+
+      for (String photoName in missingPhotos) {
+        File? downloadedPhoto =
+            await driveService.downloadPhotoFromDrive(photoName);
+        if (downloadedPhoto != null) {
+          setState(() {
+            allPhotos.add({"file": downloadedPhoto, "source": "Drive"});
+            _sortPhotos();
+          });
+          print("✅ Foto $photoName descargada y agregada a la galería.");
+        }
+      }
+
+      setState(() {
+        isDownloadingDrivePhotos = false;
+      });
+
     } catch (e) {
-      print("❌ Error cargando fotos desde Google Drive: $e");
+      print("❌ Error obteniendo fotos de Drive: $e");
     }
   }
 
-  void _togglePhotoSelection(String filePath) {
+  void _sortPhotos() {
+    allPhotos.sort((a, b) {
+      String nameA = (a["file"] as File).path.split('/').last;
+      String nameB = (b["file"] as File).path.split('/').last;
+      return nameA.compareTo(nameB);
+    });
+  }
+
+  void _togglePhotoSelection(String filePath, String source) {
+    if (sharedPhotos.contains(filePath) || source == "Drive") return; // 🔹 No permitir seleccionar imágenes compartidas o de Drive
+
     setState(() {
       if (selectedPhotos.contains(filePath)) {
         selectedPhotos.remove(filePath);
@@ -94,18 +133,28 @@ class _GalleryScreenState extends State<GalleryScreen> {
       return;
     }
 
+    setState(() {
+      isUploadingPhotos = true;
+    });
+
     for (String filePath in selectedPhotos) {
       File file = File(filePath);
       if (await file.exists()) {
-        GoogleDriveService driveService = GoogleDriveService();
+        GoogleDriveService driveService = GoogleDriveService(widget.folderId);
         String? fileId = await driveService.uploadFileToDrive(file);
         if (fileId != null) {
           print("✅ Foto subida con éxito: $filePath");
+          sharedPhotos.add(filePath); // 🔹 Marcar la foto como compartida
         } else {
           print("❌ Error al subir la foto: $filePath");
         }
       }
     }
+
+    setState(() {
+      isUploadingPhotos = false;
+      selectedPhotos.clear();
+    });
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -113,79 +162,92 @@ class _GalleryScreenState extends State<GalleryScreen> {
         backgroundColor: AppTheme.primaryColor,
       ),
     );
+  }
 
-    setState(() {
-      selectedPhotos.clear();
-    });
-
-    _loadDrivePhotos();
+  /// **Verifica si hay imágenes seleccionadas que son locales y no compartidas**
+  bool _hasUnsharedSelectedPhotos() {
+    return selectedPhotos.any((photo) => !sharedPhotos.contains(photo));
   }
 
   @override
   Widget build(BuildContext context) {
-    List<Widget> allImages = [];
-
-    // Agregar imágenes locales
-    allImages.addAll(localPhotos.map((file) {
-      String filePath = file.path;
-      bool isSelected = selectedPhotos.contains(filePath);
-
-      return GestureDetector(
-        onTap: () => _togglePhotoSelection(filePath),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Image.file(
-                file,
-                fit: BoxFit.cover,
-              ),
-            ),
-            if (isSelected)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Icon(Icons.check_circle, color: AppTheme.secondaryColor, size: 24),
-              ),
-          ],
-        ),
-      );
-    }));
-
-    // Agregar imágenes de Google Drive
-    allImages.addAll(drivePhotos.map((file) {
-      return Image.file(file, fit: BoxFit.cover);
-    }));
-
     return Scaffold(
       appBar: AppBar(
         title: Text("Galería del Evento", style: AppTheme.appBarTextStyle),
         backgroundColor: AppTheme.primaryColor,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.cloud_upload, color: Colors.white),
-            onPressed: _uploadSelectedPhotos,
-          ),
+      ),
+      body: Stack(
+        children: [
+          allPhotos.isEmpty
+              ? Center(child: Text("📂 No hay fotos en este evento.", style: AppTheme.subtitleTextStyle))
+              : GridView.builder(
+                  padding: EdgeInsets.all(8.0),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 4,
+                    mainAxisSpacing: 4,
+                  ),
+                  itemCount: allPhotos.length,
+                  itemBuilder: (context, index) {
+                    File image = allPhotos[index]["file"] as File;
+                    String source = allPhotos[index]["source"] as String;
+                    String fileName = image.path.split('/').last;
+                    bool isSelected = selectedPhotos.contains(image.path);
+                    bool isShared = sharedPhotos.contains(fileName);
+
+                    return GestureDetector(
+                      onTap: () => _togglePhotoSelection(image.path, source),
+                      child: Stack(
+                        children: [
+                          Positioned.fill(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.file(image, fit: BoxFit.cover),
+                            ),
+                          ),
+                          if (isSelected)
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: Icon(Icons.check_circle, color: AppTheme.secondaryColor, size: 24),
+                            ),
+                          Positioned(
+                            bottom: 4,
+                            right: 4,
+                            child: Container(
+                              padding: EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: source == "Local" ? Colors.blue : Colors.orange,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(source == "Local" ? "Oscar Mellizo" : "Viviana Rincón", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                          if (isShared)
+                            Positioned(
+                              top: 4,
+                              left: 4,
+                              child: Container(
+                                padding: EdgeInsets.all(4),
+                                decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(8)),
+                                child: Text("Shared", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
         ],
       ),
-      body: allImages.isEmpty
-          ? Center(
-              child: Text(
-                "📂 No hay fotos en este evento.",
-                style: AppTheme.subtitleTextStyle,
-              ),
+      floatingActionButton: _hasUnsharedSelectedPhotos()
+          ? FloatingActionButton.extended(
+              onPressed: _uploadSelectedPhotos,
+              backgroundColor: AppTheme.primaryColor,
+              label: Text("Subir (${selectedPhotos.length})", style: TextStyle(color: Colors.white)),
+              icon: Icon(Icons.cloud_upload, color: Colors.white),
             )
-          : GridView.builder(
-              padding: EdgeInsets.all(8.0),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 4,
-                mainAxisSpacing: 4,
-              ),
-              itemCount: allImages.length,
-              itemBuilder: (context, index) {
-                return allImages[index];
-              },
-            ),
+          : null,
     );
   }
 }

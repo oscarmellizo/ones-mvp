@@ -7,7 +7,9 @@ import 'package:ones_mvp/theme/theme.dart';
 
 class CameraScreen extends StatefulWidget {
   final String eventCode;
-  const CameraScreen({super.key, required this.eventCode});
+  final String folderId; // 🔹 Agregamos folderId
+
+  const CameraScreen({super.key, required this.eventCode, required this.folderId});
 
   @override
   _CameraScreenState createState() => _CameraScreenState();
@@ -131,7 +133,7 @@ class _CameraScreenState extends State<CameraScreen> {
             child: FloatingActionButton(
               onPressed: capturePhoto,
               backgroundColor: Colors.white,
-              shape: CircleBorder(),
+              shape: const CircleBorder(),
               child: Icon(Icons.camera, color: AppTheme.primaryColor, size: 36),
             ),
           ),
@@ -145,12 +147,15 @@ class _CameraScreenState extends State<CameraScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => GalleryScreen(eventCode: widget.eventCode),
+                    builder: (context) => GalleryScreen(
+                      eventCode: widget.eventCode,
+                      folderId: widget.folderId, // 🔹 Pasamos el folderId a la galería
+                    ),
                   ),
                 );
               },
               backgroundColor: Colors.white,
-              shape: CircleBorder(),
+              shape: const CircleBorder(),
               child: Icon(Icons.photo_library, color: AppTheme.primaryColor, size: 30),
             ),
           ),

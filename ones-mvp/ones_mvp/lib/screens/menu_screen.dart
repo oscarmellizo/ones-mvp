@@ -4,20 +4,23 @@ import 'camera_screen.dart';
 import 'gallery_screen.dart';
 
 class MenuScreen extends StatelessWidget {
+  final String eventCode;
+  final String folderId;
+
+  const MenuScreen({super.key, required this.eventCode, required this.folderId});
+
   @override
   Widget build(BuildContext context) {
-    final String eventCode = ModalRoute.of(context)!.settings.arguments as String;
-
     final List<Map<String, dynamic>> menuOptions = [
       {
         "title": "Ver Galería",
         "icon": "assets/gallery_icon.png",
-        "route": GalleryScreen(eventCode: eventCode),
+        "route": () => GalleryScreen(eventCode: eventCode, folderId: folderId), // 🔹 Ahora se usa correctamente una función anónima
       },
       {
         "title": "Tomar Foto",
         "icon": "assets/camera_icon.png",
-        "route": CameraScreen(eventCode: eventCode),
+        "route": () => CameraScreen(eventCode: eventCode, folderId: folderId), // 🔹 Se pasa correctamente
       },
     ];
 
@@ -27,9 +30,9 @@ class MenuScreen extends StatelessWidget {
         backgroundColor: AppTheme.primaryColor,
       ),
       body: Padding(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: GridView.builder(
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 1, // 1 botón por fila
             crossAxisSpacing: 16.0,
             mainAxisSpacing: 16.0,
@@ -42,7 +45,7 @@ class MenuScreen extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => option["route"]),
+                  MaterialPageRoute(builder: (context) => option["route"]()), // 🔹 Se usa correctamente la función anónima
                 );
               },
               child: Card(
@@ -51,7 +54,7 @@ class MenuScreen extends StatelessWidget {
                 child: Row(
                   children: [
                     Padding(
-                      padding: EdgeInsets.all(12.0),
+                      padding: const EdgeInsets.all(12.0),
                       child: Image.asset(
                         option["icon"],
                         width: 50,
@@ -61,7 +64,7 @@ class MenuScreen extends StatelessWidget {
                     Expanded(
                       child: Text(
                         option["title"],
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.primaryColor,

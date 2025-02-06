@@ -21,7 +21,7 @@ class OnesApp extends StatelessWidget {
       routes: {
         '/': (context) => SplashScreen(),
         '/event_code': (context) => EventCodeScreen(),
-        '/menu': (context) => MenuScreen(),
+        //'/menu': (context) => MenuScreen(),
         //'/gallery': (context) => GalleryScreen(),
       },
     );

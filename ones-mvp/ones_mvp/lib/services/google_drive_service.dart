@@ -7,8 +7,11 @@ import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 
 class GoogleDriveService {
-  final String folderId =
-      "1ofl14GJ0CveDDoeit_xa80Xmmtchz6ou"; // ⚠️ Reemplázalo con el ID de la carpeta en Google Drive
+  //final String folderId = "1ofl14GJ0CveDDoeit_xa80Xmmtchz6ou"; // ⚠️ Reemplázalo con el ID de la carpeta en Google Drive
+
+  final String folderId; // Ahora el folderId es dinámico
+
+  GoogleDriveService(this.folderId); // 🔹 Constructor para recibir `folderId`
 
   Future<AutoRefreshingAuthClient> getAuthClient() async {
     try {
@@ -144,4 +147,53 @@ class GoogleDriveService {
       return [];
     }
   }
+
+  // 📂 Obtener SOLO los nombres de las fotos en Drive
+  Future<List<String>> fetchPhotoNamesFromDrive() async {
+    try {
+      final driveApi = await _getDriveApi();
+      final fileList = await driveApi.files.list(
+        q: "'$folderId' in parents and mimeType contains 'image/'",
+        $fields: "files(name)",
+      );
+
+      return fileList.files?.map((file) => file.name!).toList() ?? [];
+    } catch (e) {
+      print("❌ Error obteniendo nombres de fotos de Drive: $e");
+      return [];
+    }
+  }
+
+  Future<File?> downloadPhotoFromDrive(String fileName) async {
+  try {
+    final driveApi = await _getDriveApi();
+    final fileList = await driveApi.files.list(
+      q: "'$folderId' in parents and name = '$fileName'",
+      $fields: "files(id)",
+    );
+
+    if (fileList.files == null || fileList.files!.isEmpty) return null;
+
+    final fileId = fileList.files!.first.id!;
+    final tempDir = await getTemporaryDirectory();
+    final File tempFile = File('${tempDir.path}/$fileName');
+
+    var mediaStream = await driveApi.files.get(
+      fileId,
+      downloadOptions: drive.DownloadOptions.fullMedia,
+    ) as drive.Media;
+
+    List<int> dataBytes = [];
+    await for (List<int> chunk in mediaStream.stream) {
+      dataBytes.addAll(chunk);
+    }
+
+    await tempFile.writeAsBytes(dataBytes);
+    return tempFile;
+  } catch (e) {
+    print("❌ Error descargando foto $fileName: $e");
+    return null;
+  }
+}
+
 }
