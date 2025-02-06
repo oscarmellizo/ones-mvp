@@ -2,10 +2,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:ones_mvp/services/google_drive_service.dart';
+import 'package:ones_mvp/theme/theme.dart';
 
 class GalleryScreen extends StatefulWidget {
   final String eventCode;
-  GalleryScreen({required this.eventCode});
+  const GalleryScreen({super.key, required this.eventCode});
 
   @override
   _GalleryScreenState createState() => _GalleryScreenState();
@@ -84,7 +85,12 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
   Future<void> _uploadSelectedPhotos() async {
     if (selectedPhotos.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("📌 No has seleccionado ninguna foto.")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("📌 No has seleccionado ninguna foto."),
+          backgroundColor: AppTheme.secondaryColor,
+        ),
+      );
       return;
     }
 
@@ -101,7 +107,12 @@ class _GalleryScreenState extends State<GalleryScreen> {
       }
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("✅ Fotos subidas con éxito.")));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("✅ Fotos subidas con éxito."),
+        backgroundColor: AppTheme.primaryColor,
+      ),
+    );
 
     setState(() {
       selectedPhotos.clear();
@@ -133,7 +144,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
               Positioned(
                 top: 8,
                 right: 8,
-                child: Icon(Icons.check_circle, color: Colors.green, size: 24),
+                child: Icon(Icons.check_circle, color: AppTheme.secondaryColor, size: 24),
               ),
           ],
         ),
@@ -147,16 +158,22 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Galería del Evento"),
+        title: Text("Galería del Evento", style: AppTheme.appBarTextStyle),
+        backgroundColor: AppTheme.primaryColor,
         actions: [
           IconButton(
-            icon: Icon(Icons.cloud_upload),
+            icon: Icon(Icons.cloud_upload, color: Colors.white),
             onPressed: _uploadSelectedPhotos,
           ),
         ],
       ),
       body: allImages.isEmpty
-          ? Center(child: Text("📂 No hay fotos en este evento."))
+          ? Center(
+              child: Text(
+                "📂 No hay fotos en este evento.",
+                style: AppTheme.subtitleTextStyle,
+              ),
+            )
           : GridView.builder(
               padding: EdgeInsets.all(8.0),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(

@@ -1,5 +1,5 @@
 name: ones_mvp
-description: "A new Flutter project."
+description: "Ones MVP"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -43,6 +43,7 @@ dependencies:
   google_sign_in: ^6.2.2
   googleapis: ^13.2.0
   googleapis_auth: ^1.6.0
+  flutter_native_splash: ^2.4.4
   
 
 dev_dependencies:
@@ -63,6 +64,14 @@ dev_dependencies:
 flutter:
   assets:
     - assets/service_account.json
+    - assets/logo-app.png
+    - assets/logo.png
+    - assets/birthday.png
+    - assets/soccer.png
+    - assets/wedding.png
+    - assets/concert.png
+    - assets/gallery_icon.png
+    - assets/camera_icon.png
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
@@ -98,3 +107,10 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_native_splash:
+  color: "#FCC056" # Cambia por el color de fondo del manual de marca
+  image: assets/logo.png # Asegúrate de colocar aquí la ruta correcta del logo
+  android_12:
+    image: assets/logo.png
+    color: "#FCC056"
