@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:ones_mvp/services/google_drive_service.dart';
 import 'package:ones_mvp/theme/theme.dart';
 
@@ -125,7 +124,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
   Future<void> _uploadSelectedPhotos() async {
     if (selectedPhotos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text("📌 No has seleccionado ninguna foto."),
           backgroundColor: AppTheme.secondaryColor,
         ),
@@ -157,7 +156,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+      const SnackBar(
         content: Text("✅ Fotos subidas con éxito."),
         backgroundColor: AppTheme.primaryColor,
       ),
@@ -173,16 +172,16 @@ class _GalleryScreenState extends State<GalleryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Galería del Evento", style: AppTheme.appBarTextStyle),
+        title: const Text("Galería del Evento", style: AppTheme.appBarTextStyle),
         backgroundColor: AppTheme.primaryColor,
       ),
       body: Stack(
         children: [
           allPhotos.isEmpty
-              ? Center(child: Text("📂 No hay fotos en este evento.", style: AppTheme.subtitleTextStyle))
+              ? const Center(child: Text("📂 No hay fotos en este evento.", style: AppTheme.subtitleTextStyle))
               : GridView.builder(
-                  padding: EdgeInsets.all(8.0),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  padding: const EdgeInsets.all(8.0),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 3,
                     crossAxisSpacing: 4,
                     mainAxisSpacing: 4,
@@ -206,7 +205,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                             ),
                           ),
                           if (isSelected)
-                            Positioned(
+                            const Positioned(
                               top: 8,
                               right: 8,
                               child: Icon(Icons.check_circle, color: AppTheme.secondaryColor, size: 24),
@@ -215,12 +214,12 @@ class _GalleryScreenState extends State<GalleryScreen> {
                             bottom: 4,
                             right: 4,
                             child: Container(
-                              padding: EdgeInsets.all(4),
+                              padding: const EdgeInsets.all(4),
                               decoration: BoxDecoration(
                                 color: source == "Local" ? Colors.blue : Colors.orange,
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Text(source == "Local" ? "Oscar Mellizo" : "Viviana Rincón", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                              child: Text(source == "Local" ? "Oscar Mellizo" : "Viviana Rincón", style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                             ),
                           ),
                           if (isShared)
@@ -228,9 +227,9 @@ class _GalleryScreenState extends State<GalleryScreen> {
                               top: 4,
                               left: 4,
                               child: Container(
-                                padding: EdgeInsets.all(4),
+                                padding: const EdgeInsets.all(4),
                                 decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(8)),
-                                child: Text("Shared", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                                child: const Text("Shared", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                               ),
                             ),
                         ],
@@ -244,8 +243,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
           ? FloatingActionButton.extended(
               onPressed: _uploadSelectedPhotos,
               backgroundColor: AppTheme.primaryColor,
-              label: Text("Subir (${selectedPhotos.length})", style: TextStyle(color: Colors.white)),
-              icon: Icon(Icons.cloud_upload, color: Colors.white),
+              label: Text("Subir (${selectedPhotos.length})", style: const TextStyle(color: Colors.white)),
+              icon: const Icon(Icons.cloud_upload, color: Colors.white),
             )
           : null,
     );

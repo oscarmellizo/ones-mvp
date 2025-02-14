@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'screens/splash_screen.dart';
-import 'screens/event_code_screen.dart';
-import 'screens/menu_screen.dart';
-//import 'screens/gallery_screen.dart';
 
-void main() {
-  runApp(OnesApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // 🔹 Asegura la inicialización de Flutter antes de Firebase
+  await Firebase.initializeApp(); // 🔹 Inicializa Firebase antes de correr la app
+  runApp(const OnesApp());
 }
 
 class OnesApp extends StatelessWidget {
@@ -19,10 +19,7 @@ class OnesApp extends StatelessWidget {
       theme: ThemeData(primarySwatch: Colors.blue),
       initialRoute: '/',
       routes: {
-        '/': (context) => SplashScreen(),
-        '/event_code': (context) => EventCodeScreen(),
-        //'/menu': (context) => MenuScreen(),
-        //'/gallery': (context) => GalleryScreen(),
+        '/': (context) => const SplashScreen(),
       },
     );
   }

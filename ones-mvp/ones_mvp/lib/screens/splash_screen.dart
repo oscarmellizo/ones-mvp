@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ones_mvp/screens/login_screen.dart';
 import 'dart:async';
 import 'package:ones_mvp/theme/theme.dart'; // Importa el tema de Ones
 
@@ -14,7 +15,10 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
     Timer(const Duration(seconds: 3), () {
-      Navigator.pushReplacementNamed(context, '/event_code');
+       Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
     });
   }
 

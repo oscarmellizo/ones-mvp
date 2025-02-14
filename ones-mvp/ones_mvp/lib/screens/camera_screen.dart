@@ -134,7 +134,7 @@ class _CameraScreenState extends State<CameraScreen> {
               onPressed: capturePhoto,
               backgroundColor: Colors.white,
               shape: const CircleBorder(),
-              child: Icon(Icons.camera, color: AppTheme.primaryColor, size: 36),
+              child: const Icon(Icons.camera, color: AppTheme.primaryColor, size: 36),
             ),
           ),
 
@@ -156,7 +156,7 @@ class _CameraScreenState extends State<CameraScreen> {
               },
               backgroundColor: Colors.white,
               shape: const CircleBorder(),
-              child: Icon(Icons.photo_library, color: AppTheme.primaryColor, size: 30),
+              child: const Icon(Icons.photo_library, color: AppTheme.primaryColor, size: 30),
             ),
           ),
         ],

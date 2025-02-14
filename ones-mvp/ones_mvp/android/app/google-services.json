@@ -1,0 +1,38 @@
+{
+  "project_info": {
+    "project_number": "403122779240",
+    "project_id": "ones-a96a7",
+    "storage_bucket": "ones-a96a7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:403122779240:android:9ad840936724f1c32e77dd",
+        "android_client_info": {
+          "package_name": "events.ones.mvp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "403122779240-nenbrrg19q2apjqfae6lv96s5rovo752.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "events.ones.mvp",
+            "certificate_hash": "0524b8ba3413ef0e39cb79243a63fce4b47b0ba6"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDhNijTTfRPRLP92-zPZSKXGtve6n-mqv4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

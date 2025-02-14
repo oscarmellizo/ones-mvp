@@ -26,7 +26,7 @@ class MenuScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Menú del Evento", style: AppTheme.appBarTextStyle),
+        title: const Text("Menú del Evento", style: AppTheme.appBarTextStyle),
         backgroundColor: AppTheme.primaryColor,
       ),
       body: Padding(

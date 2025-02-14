@@ -44,7 +44,8 @@ dependencies:
   googleapis: ^13.2.0
   googleapis_auth: ^1.6.0
   flutter_native_splash: ^2.4.4
-  
+  firebase_core: ^3.11.0
+  firebase_auth: ^5.4.2
 
 dev_dependencies:
   flutter_test:
@@ -72,6 +73,7 @@ flutter:
     - assets/concert.png
     - assets/gallery_icon.png
     - assets/camera_icon.png
+    - assets/google_logo.png
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.

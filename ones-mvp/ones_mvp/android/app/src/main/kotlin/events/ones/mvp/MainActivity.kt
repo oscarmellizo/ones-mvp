@@ -1,4 +1,4 @@
-package com.example.ones_mvp
+package events.ones.mvp
 
 import io.flutter.embedding.android.FlutterActivity
 
