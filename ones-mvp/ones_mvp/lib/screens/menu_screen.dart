@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ones_mvp/theme/theme.dart';
 import 'camera_screen.dart';
 import 'gallery_screen.dart';
+import 'invite_screen.dart';
 
 class MenuScreen extends StatelessWidget {
   final String eventCode;
@@ -15,12 +16,17 @@ class MenuScreen extends StatelessWidget {
       {
         "title": "Ver Galería",
         "icon": "assets/gallery_icon.png",
-        "route": () => GalleryScreen(eventCode: eventCode, folderId: folderId), // 🔹 Ahora se usa correctamente una función anónima
+        "route": () => GalleryScreen(eventCode: eventCode, folderId: folderId),
       },
       {
         "title": "Tomar Foto",
         "icon": "assets/camera_icon.png",
-        "route": () => CameraScreen(eventCode: eventCode, folderId: folderId), // 🔹 Se pasa correctamente
+        "route": () => CameraScreen(eventCode: eventCode, folderId: folderId),
+      },
+      {
+        "title": "Invitar Participantes",
+        "icon": "assets/invite.png",
+        "route": () => InviteScreen(eventCode: eventCode), // Nueva pantalla
       },
     ];
 
@@ -33,10 +39,10 @@ class MenuScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: GridView.builder(
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 1, // 1 botón por fila
+            crossAxisCount: 1, 
             crossAxisSpacing: 16.0,
             mainAxisSpacing: 16.0,
-            childAspectRatio: 3.5, // Ajusta la altura de los botones
+            childAspectRatio: 3.5, 
           ),
           itemCount: menuOptions.length,
           itemBuilder: (context, index) {
@@ -45,7 +51,7 @@ class MenuScreen extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => option["route"]()), // 🔹 Se usa correctamente la función anónima
+                  MaterialPageRoute(builder: (context) => option["route"]()),
                 );
               },
               child: Card(
