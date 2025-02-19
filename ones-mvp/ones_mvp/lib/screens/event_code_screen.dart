@@ -1,45 +1,163 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ones_mvp/screens/menu_screen.dart';
 import 'package:ones_mvp/theme/theme.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:uuid/uuid.dart';
 
-// Definir eventos con su código, imagen y folderId de Google Drive
-final List<Map<String, String>> eventList = [
-  {
-    "name": "Cumpleaños",
-    "path": "/storage/emulated/0/Ones/EVENTO001",
-    "image": "assets/birthday.png",
-    "folderId": "1FO6kJoqwhaI1vwgg5cv8hy2d4z4sLerZ"
-  },
-  {
-    "name": "Fútbol",
-    "path": "/storage/emulated/0/Ones/EVENTO002",
-    "image": "assets/soccer.png",
-    "folderId": "1eWVtBpoovhtSzXEPHpz-LDcqEWObLbk6"
-  },
-  {
-    "name": "Boda",
-    "path": "/storage/emulated/0/Ones/EVENTO003",
-    "image": "assets/wedding.png",
-    "folderId": "1sfk148oGdwV7M7W0OEKi5ykI3G2vEYck"
-  },
-  {
-    "name": "Concierto",
-    "path": "/storage/emulated/0/Ones/EVENTO004",
-    "image": "assets/concert.png",
-    "folderId": "10hC5y2SnREN5v2wSGIInKHF7i-FqN99x"
-  },
-];
-
-class EventCodeScreen extends StatelessWidget {
+class EventCodeScreen extends StatefulWidget {
   final User user;
   const EventCodeScreen({super.key, required this.user});
 
-  void navigateToEvent(BuildContext context, String eventPath, String folderId) {
+  @override
+  _EventCodeScreenState createState() => _EventCodeScreenState();
+}
+
+class _EventCodeScreenState extends State<EventCodeScreen> {
+  List<Map<String, String>> eventList = [];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final Uuid _uuid = const Uuid();
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAndRegisterUser();
+    _fetchUserEvents();
+  }
+
+  /// **🔍 Verifica si el usuario ya está en Firestore, si no, lo registra**
+  Future<void> _checkAndRegisterUser() async {
+    try {
+      final userDoc = await _firestore.collection('users').where('email', isEqualTo: widget.user.email).limit(1).get();
+
+      if (userDoc.docs.isEmpty) {
+        String userId = _uuid.v4();
+        // 📌 Usuario no registrado, lo añadimos
+        await _firestore.collection('users').doc(userId).set({
+          "email": widget.user.email,
+          "name": widget.user.displayName?.split(" ").first ?? widget.user.email!.split('@')[0], // Usa el nombre corto si no hay displayName
+        });
+
+        print("✅ Usuario ${widget.user.email} registrado en Firestore.");
+      } else {
+        print("📂 Usuario ${widget.user.email} ya registrado en Firestore.");
+      }
+    } catch (e) {
+      print("❌ Error al verificar/registrar usuario: $e");
+    }
+  }
+
+  /// **🔄 Consultar eventos del usuario en Firestore**
+  Future<void> _fetchUserEvents() async {
+    try {
+      final querySnapshot = await _firestore
+          .collection('events')
+          .where('owner', isEqualTo: widget.user.email)
+          .get();
+
+      List<Map<String, String>> fetchedEvents = querySnapshot.docs.map((doc) {
+        final data = doc.data()
+            as Map<String, dynamic>; // Asegura el tipo de dato dinámico
+        return {
+          "name": data["name"]?.toString() ?? "Evento sin nombre",
+          "path": data["path"]?.toString() ?? "",
+          "image": data["image"]?.toString() ?? "assets/birthday.png",
+          "folderId": data["folderId"]?.toString() ?? "",
+        };
+      }).toList();
+
+      setState(() {
+        eventList = fetchedEvents;
+        isLoading = false;
+      });
+    } catch (e) {
+      print("❌ Error al obtener eventos: $e");
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  /// **🚀 Crear un nuevo evento**
+  Future<void> _createEvent() async {
+    TextEditingController eventNameController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Crear Nuevo Evento"),
+        content: TextField(
+          controller: eventNameController,
+          decoration: const InputDecoration(labelText: "Nombre del Evento"),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancelar"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              String eventName = eventNameController.text.trim();
+              if (eventName.isEmpty) return;
+
+              Navigator.pop(context);
+              await _saveEventToFirestore(eventName);
+            },
+            child: const Text("Crear"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// **💾 Guardar evento en Firestore**
+  Future<void> _saveEventToFirestore(String eventName) async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) {
+    print("❌ No hay usuario autenticado.");
+    return;
+  }
+
+  try {
+    String eventId = _uuid.v4().substring(0, 8).toUpperCase();
+    String eventPath = "/storage/emulated/0/Ones/$eventId";
+
+    // Obtener un folderId disponible
+    final folderSnapshot = await _firestore.collection('folderIds').where('used', isEqualTo: false).limit(1).get();
+    if (folderSnapshot.docs.isEmpty) {
+      print("❌ No hay folderIds disponibles.");
+      return;
+    }
+    String folderId = folderSnapshot.docs.first.id;
+
+    // Marcar folderId como usado
+    await _firestore.collection('folderIds').doc(folderId).update({'used': true});
+
+    // Crear el evento en Firestore
+    await _firestore.collection('events').doc(eventId).set({
+      "name": eventName,
+      "path": eventPath,
+      "image": "assets/birthday.png",
+      "folderId": folderId,
+      "owner": user.email,  // 📌 Asegurarse de enviar el email autenticado correctamente
+    });
+
+    print("✅ Evento '$eventName' creado correctamente.");
+    _fetchUserEvents(); // Refrescar la lista de eventos en pantalla
+  } catch (e) {
+    print("❌ Error al crear evento: $e");
+  }
+}
+
+
+  /// **🔗 Navegar al evento seleccionado**
+  void navigateToEvent(String eventPath, String folderId) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => MenuScreen(eventCode: eventPath, folderId: folderId),
+        builder: (context) =>
+            MenuScreen(eventCode: eventPath, folderId: folderId),
       ),
     );
   }
@@ -48,9 +166,13 @@ class EventCodeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Selecciona un Evento", style: AppTheme.appBarTextStyle),
+        title: const Text("Mis Eventos", style: AppTheme.appBarTextStyle),
         backgroundColor: AppTheme.primaryColor,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.add, color: Colors.white),
+            onPressed: _createEvent,
+          ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: () async {
@@ -64,79 +186,90 @@ class EventCodeScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // 🔹 Sección para mostrar la información del usuario autenticado
             _buildUserProfile(),
             const SizedBox(height: 20),
-
-            // 🔹 Grid de eventos existentes
-            Expanded(
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2, // 2 eventos por fila
-                  crossAxisSpacing: 16.0,
-                  mainAxisSpacing: 16.0,
-                  childAspectRatio: 1.2, // Ajusta la proporción de los botones
-                ),
-                itemCount: eventList.length,
-                itemBuilder: (context, index) {
-                  final event = eventList[index];
-                  return GestureDetector(
-                    onTap: () => navigateToEvent(context, event["path"]!, event["folderId"]!),
-                    child: Card(
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Image.asset(
-                                event["image"]!,
-                                fit: BoxFit.contain,
-                              ),
+            isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : Expanded(
+                    child: eventList.isEmpty
+                        ? const Center(
+                            child: Text("No tienes eventos aún. ¡Crea uno!"))
+                        : GridView.builder(
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 16.0,
+                              mainAxisSpacing: 16.0,
+                              childAspectRatio: 1.2,
                             ),
+                            itemCount: eventList.length,
+                            itemBuilder: (context, index) {
+                              final event = eventList[index];
+                              return GestureDetector(
+                                onTap: () => navigateToEvent(
+                                    event["path"]!, event["folderId"]!),
+                                child: Card(
+                                  elevation: 4,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12)),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Expanded(
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(8.0),
+                                          child: Image.asset(
+                                            event["image"]!,
+                                            fit: BoxFit.contain,
+                                          ),
+                                        ),
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 10),
+                                        child: Text(
+                                          event["name"]!,
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppTheme.primaryColor,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
                           ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            child: Text(
-                              event["name"]!,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.primaryColor,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
+                  ),
           ],
         ),
       ),
     );
   }
 
-  /// **Widget para mostrar la información del usuario autenticado**
+  /// **👤 Widget para mostrar la información del usuario autenticado**
   Widget _buildUserProfile() {
     return Row(
       children: [
         CircleAvatar(
-          backgroundImage: user.photoURL != null ? NetworkImage(user.photoURL!) : null,
+          backgroundImage: widget.user.photoURL != null
+              ? NetworkImage(widget.user.photoURL!)
+              : null,
           radius: 25,
-          child: user.photoURL == null ? const Icon(Icons.person, size: 30) : null,
+          child: widget.user.photoURL == null
+              ? const Icon(Icons.person, size: 30)
+              : null,
         ),
         const SizedBox(width: 10),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Hola, ${user.displayName ?? 'Usuario'}!",
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            Text(user.email ?? '',
+            Text("Hola, ${widget.user.displayName ?? 'Usuario'}!",
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(widget.user.email ?? '',
                 style: const TextStyle(fontSize: 14, color: Colors.grey)),
           ],
         ),
