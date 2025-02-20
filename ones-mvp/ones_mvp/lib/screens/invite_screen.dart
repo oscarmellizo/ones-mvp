@@ -36,7 +36,7 @@ class _InviteScreenState extends State<InviteScreen> {
       String invitationId = _uuid.v4();
       await _firestore.collection("invitations").doc(invitationId).set({
         "eventCode": widget.eventCode.split('/').last,
-        "email": email,
+        "email": email.toLowerCase(),
         "status": "invited", // Estado inicial
         "timestamp": FieldValue.serverTimestamp(),
       });

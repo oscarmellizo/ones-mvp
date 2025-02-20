@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ones_mvp/screens/menu_screen.dart';
+import 'package:ones_mvp/screens/invitations_screen.dart'; // Nueva pantalla de invitaciones
 import 'package:ones_mvp/theme/theme.dart';
 import 'package:uuid/uuid.dart';
 
@@ -15,6 +16,7 @@ class EventCodeScreen extends StatefulWidget {
 
 class _EventCodeScreenState extends State<EventCodeScreen> {
   List<Map<String, String>> eventList = [];
+  int invitationCount = 0; // 🔹 Contador de invitaciones pendientes
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final Uuid _uuid = const Uuid();
   bool isLoading = true;
@@ -24,6 +26,7 @@ class _EventCodeScreenState extends State<EventCodeScreen> {
     super.initState();
     _checkAndRegisterUser();
     _fetchUserEvents();
+    _fetchPendingInvitations();
   }
 
   /// **🔍 Verifica si el usuario ya está en Firestore, si no, lo registra**
@@ -33,10 +36,9 @@ class _EventCodeScreenState extends State<EventCodeScreen> {
 
       if (userDoc.docs.isEmpty) {
         String userId = _uuid.v4();
-        // 📌 Usuario no registrado, lo añadimos
         await _firestore.collection('users').doc(userId).set({
           "email": widget.user.email,
-          "name": widget.user.displayName?.split(" ").first ?? widget.user.email!.split('@')[0], // Usa el nombre corto si no hay displayName
+          "name": widget.user.displayName?.split(" ").first ?? widget.user.email!.split('@')[0],
         });
 
         print("✅ Usuario ${widget.user.email} registrado en Firestore.");
@@ -45,6 +47,25 @@ class _EventCodeScreenState extends State<EventCodeScreen> {
       }
     } catch (e) {
       print("❌ Error al verificar/registrar usuario: $e");
+    }
+  }
+
+  /// **📩 Consultar cantidad de invitaciones pendientes**
+  Future<void> _fetchPendingInvitations() async {
+    try {
+      final querySnapshot = await _firestore
+          .collection('invitations')
+          .where('email', isEqualTo: widget.user.email?.toLowerCase())
+          .where('status', isEqualTo: 'invited')
+          .get();
+
+      setState(() {
+        invitationCount = querySnapshot.docs.length;
+      });
+
+      print("📢 Tienes $invitationCount invitaciones pendientes.");
+    } catch (e) {
+      print("❌ Error al obtener invitaciones: $e");
     }
   }
 
@@ -57,8 +78,7 @@ class _EventCodeScreenState extends State<EventCodeScreen> {
           .get();
 
       List<Map<String, String>> fetchedEvents = querySnapshot.docs.map((doc) {
-        final data = doc.data()
-            as Map<String, dynamic>; // Asegura el tipo de dato dinámico
+        final data = doc.data() as Map<String, dynamic>;
         return {
           "name": data["name"]?.toString() ?? "Evento sin nombre",
           "path": data["path"]?.toString() ?? "",
@@ -79,6 +99,7 @@ class _EventCodeScreenState extends State<EventCodeScreen> {
     }
   }
 
+  
   /// **🚀 Crear un nuevo evento**
   Future<void> _createEvent() async {
     TextEditingController eventNameController = TextEditingController();
@@ -173,6 +194,38 @@ class _EventCodeScreenState extends State<EventCodeScreen> {
             icon: const Icon(Icons.add, color: Colors.white),
             onPressed: _createEvent,
           ),
+          // 🔔 Botón de notificaciones
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications, color: Colors.white),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => InvitationsScreen(userEmail: widget.user.email ?? ""),
+                    ),
+                  ).then((_) => _fetchPendingInvitations()); // Actualizar después de ver invitaciones
+                },
+              ),
+              if (invitationCount > 0)
+                Positioned(
+                  right: 10,
+                  top: 10,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      '$invitationCount',
+                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: () async {
@@ -192,11 +245,9 @@ class _EventCodeScreenState extends State<EventCodeScreen> {
                 ? const Center(child: CircularProgressIndicator())
                 : Expanded(
                     child: eventList.isEmpty
-                        ? const Center(
-                            child: Text("No tienes eventos aún. ¡Crea uno!"))
+                        ? const Center(child: Text("No tienes eventos aún. ¡Crea uno!"))
                         : GridView.builder(
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 2,
                               crossAxisSpacing: 16.0,
                               mainAxisSpacing: 16.0,
@@ -206,12 +257,10 @@ class _EventCodeScreenState extends State<EventCodeScreen> {
                             itemBuilder: (context, index) {
                               final event = eventList[index];
                               return GestureDetector(
-                                onTap: () => navigateToEvent(
-                                    event["path"]!, event["folderId"]!),
+                                onTap: () => _navigateToEvent(event["path"]!, event["folderId"]!),
                                 child: Card(
                                   elevation: 4,
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12)),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
@@ -225,8 +274,7 @@ class _EventCodeScreenState extends State<EventCodeScreen> {
                                         ),
                                       ),
                                       Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 10),
+                                        padding: const EdgeInsets.symmetric(vertical: 10),
                                         child: Text(
                                           event["name"]!,
                                           style: const TextStyle(
@@ -249,28 +297,29 @@ class _EventCodeScreenState extends State<EventCodeScreen> {
     );
   }
 
+  /// **🔗 Navegar al evento seleccionado**
+  void _navigateToEvent(String eventPath, String folderId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => MenuScreen(eventCode: eventPath, folderId: folderId)),
+    );
+  }
+
   /// **👤 Widget para mostrar la información del usuario autenticado**
   Widget _buildUserProfile() {
     return Row(
       children: [
         CircleAvatar(
-          backgroundImage: widget.user.photoURL != null
-              ? NetworkImage(widget.user.photoURL!)
-              : null,
+          backgroundImage: widget.user.photoURL != null ? NetworkImage(widget.user.photoURL!) : null,
           radius: 25,
-          child: widget.user.photoURL == null
-              ? const Icon(Icons.person, size: 30)
-              : null,
+          child: widget.user.photoURL == null ? const Icon(Icons.person, size: 30) : null,
         ),
         const SizedBox(width: 10),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Hola, ${widget.user.displayName ?? 'Usuario'}!",
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            Text(widget.user.email ?? '',
-                style: const TextStyle(fontSize: 14, color: Colors.grey)),
+            Text("Hola, ${widget.user.displayName ?? 'Usuario'}!", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(widget.user.email ?? '', style: const TextStyle(fontSize: 14, color: Colors.grey)),
           ],
         ),
       ],
