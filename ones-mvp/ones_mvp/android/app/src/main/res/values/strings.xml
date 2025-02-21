@@ -1,1 +1,4 @@
-<string name="default_web_client_id">984401833980-t8cagv1b9sht85d5mpg72jsku5kn773v.apps.googleusercontent.com</string>
+<resources>
+    <string name="app_name">Ones</string>
+    <string name="default_web_client_id">984401833980-t8cagv1b9sht85d5mpg72jsku5kn773v.apps.googleusercontent.com</string>
+</resources>
